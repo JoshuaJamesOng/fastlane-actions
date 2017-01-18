@@ -19,7 +19,7 @@ module Fastlane
 
         # Consume endpoint result
         case response[:status]
-          when 200
+          when 201
             UI.success('Successfully started job')
           else
             UI.user_error!("Jenkins responded with #{response[:status]}:#{response[:body]}")
