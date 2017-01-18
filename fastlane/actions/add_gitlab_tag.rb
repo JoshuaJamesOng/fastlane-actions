@@ -25,7 +25,7 @@ module Fastlane
 
           else
             if response[:status] != 200
-              UI.error("GitLab responded with #{response[:status]}:#{response[:body]}")
+              UI.user_error!("GitLab responded with #{response[:status]}:#{response[:body]}")
             end
         end
       end
@@ -76,15 +76,15 @@ module Fastlane
         # Below a few examples
         [
             FastlaneCore::ConfigItem.new(key: :server_url,
-                                         env_name: "FL_SET_GITLAB_RELEASE_SERVER_URL",
+                                         env_name: 'FL_SET_GITLAB_RELEASE_SERVER_URL',
                                          description: "The server url. e.g. 'https://gitlab.intranet.company/api/v3'",
                                          optional: false,
                                          verify_block: proc do |value|
-                                           UI.user_error!("Please include the protocol in the server url, e.g. https://gitlab.intranet.company/api/v3") unless value.include? "//"
+                                           UI.user_error!('Please include the protocol in the server url, e.g. https://gitlab.intranet.company/api/v3') unless value.include? "//"
                                          end),
             FastlaneCore::ConfigItem.new(key: :api_token,
-                                         env_name: "FL_SET_GITLAB_RELEASE_API_TOKEN",
-                                         description: "Gitlab API Private Token from /profile/account",
+                                         env_name: 'FL_SET_GITLAB_RELEASE_API_TOKEN',
+                                         description: 'Gitlab API Private Token from /profile/account',
                                          sensitive: true,
                                          default_value: ENV['GITLAB_PRIVATE_TOKEN'],
                                          optional: false,
@@ -92,27 +92,21 @@ module Fastlane
                                            UI.user_error!("No Gitlab API Private Token, pass using `api_token: 'token'`") unless (value and not value.empty?)
                                          end),
             FastlaneCore::ConfigItem.new(key: :repository_id,
-                                         env_name: "FL_SET_GITLAB_RELEASE_REPOSITORY_ID",
-                                         description: "D",
+                                         env_name: 'FL_SET_GITLAB_RELEASE_REPOSITORY_ID',
+                                         description: 'Repository id which can be retrieved from api',
                                          optional: false),
             FastlaneCore::ConfigItem.new(key: :tag_name,
-                                         env_name: "FL_SET_GITLAB_TAG_NAME",
-                                         description: "D",
-                                         optional: false),
+                                         env_name: 'FL_SET_GITLAB_TAG_NAME',
+                                         description: 'Name of the tag to attach release notes',
+                                         optional: false,
+                                         verify_block: proc do |value|
+                                           UI.user_error!("No tag, pass using `tag_name: 'HASH'`") unless (value and not value.empty?)
+                                         end),
             FastlaneCore::ConfigItem.new(key: :commit_hash,
-                                         env_name: "FL_SET_GITLAB_COMMIT_HASH",
-                                         description: "D",
-                                         default_value: "HEAD",
-                                         optional: false)
+                                         env_name: 'FL_SET_GITLAB_COMMIT_HASH',
+                                         description: 'Hash of the commit to tag',
+                                         default_value: 'HEAD')
         ]
-      end
-
-      def self.output
-        []
-      end
-
-      def self.return_value
-        []
       end
 
       def self.authors
@@ -126,10 +120,10 @@ module Fastlane
       def self.example_code
         [
             'add_gitlab_tag(
+              tag_name: "v1.0.0",
               server_url: "https://gitlab.intranet.company/api/v3/",
               api_token: ENV["GITLAB_PRIVATE_TOKEN"],
-              repository_id: 1,
-              tag_name: "v1.0.0",
+              repository_id: "1",
               commit_hash: "dead69"
             )'
         ]
