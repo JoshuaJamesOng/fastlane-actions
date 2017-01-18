@@ -22,7 +22,7 @@ module Fastlane
           when 200
             UI.success('Successfully started job')
           else
-            UI.error("Jenkins responded with #{response[:status]}:#{response[:body]}")
+            UI.user_error!("Jenkins responded with #{response[:status]}:#{response[:body]}")
         end
       end
 
