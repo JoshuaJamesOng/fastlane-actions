@@ -26,20 +26,15 @@ module Fastlane
         end
       end
 
-      def self.call_endpoint(url, method, parameters)
+      def self.call_endpoint(url, method)
         require 'excon'
 
         case method
           when 'post'
-            if parameters.nil?
-              response = Excon.post(
-                  url,
-                  :body => parameters,
-                  :headers => {'Content-Type' => 'application/x-www-form-urlencoded'}
-              )
-            else
-              response = Excon.post(url)
-            end
+            response = Excon.post(
+                url,
+                :headers => {'Content-Type' => 'application/x-www-form-urlencoded'}
+            )
           else
             UI.user_error!("Unsupported method #{method}")
         end
@@ -53,10 +48,10 @@ module Fastlane
         if parameter.nil?
           url = "http://#{username}:#{password}@#{server_url}/job/#{job_name}/build"
         else
-          url = "http://#{username}:#{password}@#{server_url}/job/#{job_name}/buildWithParameters"
+          url = "http://#{username}:#{password}@#{server_url}/job/#{job_name}/buildWithParameters?#{parameter}"
         end
 
-        call_endpoint(url, 'post', nil)
+        call_endpoint(url, 'post')
       end
 
       #####################################################
