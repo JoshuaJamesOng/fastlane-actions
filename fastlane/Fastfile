@@ -35,4 +35,21 @@ lane :gitlab_release do |options|
   end
 end
 
+desc "Gets the id of the next Jenkins job"
+lane :get_jenkins_id do |options|
+    response = get_jenkins_job(
+        server_url: "#{options[:server_url]}",
+        job_name: "#{options[:job_name]}",
+        username: "#{options[:username]}",
+        password: "#{options[:password]}",
+    )
 
+    if response[:status] == 200
+      require 'json'
+      json = JSON.parse(response[:body])
+      json["nextBuildNumber"]
+    else
+      UI.user_error!("Request returned #{response[:status]}")
+    end
+
+end
