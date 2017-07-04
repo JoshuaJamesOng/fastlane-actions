@@ -8,9 +8,10 @@ module Fastlane
         # fastlane will take care of reading in the parameter and fetching the environment variable:
         UI.important("Waiting for Jenkins job \"http://#{params[:server_url]}/job/#{params[:job_name]}/#{params[:job_number]}\"")
 
-        waiting = true
+        is_built = false
+        is_success = false
 
-        while waiting do
+        until is_built do
           # Call endpoint
           response = build(
               params[:server_url],
@@ -18,34 +19,63 @@ module Fastlane
               params[:job_number]
           )
 
-          # Get result from response
-          result = get_result_from_response(response)
-
           # Consume endpoint result
-          case result
-            when "SUCCESS"
-              UI.success('Job was a success')
-              waiting = false
-              success = true
-            when "FAILURE"
-            when "ABORTED"
-            when "UNSTABLE"
-              UI.error('Job was a failure')
-              waiting = false
-              success = false
+          case response[:status]
+            when 200
+              # Get result from response
+              json = JSON.parse(response[:body])
+
+              # Check if job finished building
+              if !json['building']
+                is_built = true
+
+                # Return build status of job
+                is_success = get_result(
+                    json['result']
+                )
+              else
+                # If not built, try again in a few moments
+                wait('Waiting for Job to finish')
+              end
+
+            when 404
+              wait('Waiting for Job to exist')
+
             else
-              UI.important('Waiting for Job to finish')
-              sleep(5)
+              UI.user_error!('Unexpected error whilst fetching Jenkins job')
           end
+
         end
 
-        return success;
+        return is_success
       end
 
-      def self.get_result_from_response(response)
-        require 'json'
+      def self.wait(message)
+        UI.important(message)
+        sleep(5)
+      end
 
-        return JSON.parse(response[:body])['result']
+      def self.get_result(result)
+        success = false
+
+        case result
+          when 'SUCCESS'
+            success = true
+          when 'FAILURE'
+          when 'ABORTED'
+          when 'UNSTABLE'
+            success = false
+          else
+            UI.user_error!('Unhandled Jenkins status')
+        end
+
+        if success
+          UI.success('Result was a success')
+        else
+          UI.error('Result was a failure')
+        end
+
+        success
       end
 
       def self.call_endpoint(url, method)
@@ -55,10 +85,11 @@ module Fastlane
           when 'get'
             response = Excon.get(url)
           else
+            response = nil
             UI.user_error!("Unsupported method #{method}")
         end
 
-        return response
+        response
       end
 
       def self.build(server_url, job_name, job_number)
@@ -72,7 +103,7 @@ module Fastlane
       #####################################################
 
       def self.description
-        "Wait for the specified Jenkins job to finish"
+        'Wait for the specified Jenkins job to finish'
       end
 
       def self.details
@@ -91,44 +122,44 @@ module Fastlane
         # Below a few examples
         [
             FastlaneCore::ConfigItem.new(key: :server_url,
-                                         env_name: "FL_BUILD_JENKINS_JOB_SERVER_URL",
+                                         env_name: 'FL_BUILD_JENKINS_JOB_SERVER_URL',
                                          description: "The server url. e.g. 'gitlab.intranet.company/api/v3'",
                                          optional: false),
             FastlaneCore::ConfigItem.new(key: :job_name,
-                                         env_name: "FL_BUILD_JENKINS_JOB_JOB_NAME",
-                                         description: "The Jenkins job. e.g. WC-PR11-Releases",
+                                         env_name: 'FL_BUILD_JENKINS_JOB_JOB_NAME',
+                                         description: 'The Jenkins job. e.g. WC-PR11-Releases',
                                          optional: false,
                                          verify_block: proc do |value|
-                                           UI.user_error!("No Jenkins Job specified") unless (value and not value.empty?)
+                                           UI.user_error!('No Jenkins Job specified') unless (value and not value.empty?)
                                          end),
             FastlaneCore::ConfigItem.new(key: :job_number,
-                                         env_name: "FL_BUILD_JENKINS_JOB_JOB_NUMBER",
-                                         description: "The Jenkins job number. e.g. 1, 2, defaults to lastBuild",
-                                         default_value: "lastBuild",
+                                         env_name: 'FL_BUILD_JENKINS_JOB_JOB_NUMBER',
+                                         description: 'The Jenkins job number. e.g. 1, 2, defaults to lastBuild',
+                                         default_value: 'lastBuild',
                                          optional: true)
         ]
       end
 
-      def self.output
-        # Define the shared values you are going to provide
-        # Example
-        [
-            ['BUILD_JENKINS_JOB_CUSTOM_VALUE', 'A description of what this value contains']
-        ]
-      end
-
       def self.return_value
-        # If you method provides a return value, you can describe here what it does
-        "Returns a bool, which is true if the job successfully complete, else false"
+        'Returns a bool, which is true if the job successfully complete, else false'
       end
 
       def self.authors
-        # So no one will ever forget your contribution to fastlane :) You are awesome btw!
-        ["ThomasBruggenwirth"]
+        ['ThomasBruggenwirth && JoshuaJamesOng']
       end
 
       def self.is_supported?(platform)
         true
+      end
+
+      def self.example_code
+        [
+            'is_success = wait_for_jenkins_job(
+              server_url: "https://jenkins.intranet.company.com",
+              job_name: "MyGroup/view/MyView/job/release-1.0.0",
+              job_number: "lastBuild"
+            )'
+        ]
       end
     end
   end
