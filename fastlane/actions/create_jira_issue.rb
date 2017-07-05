@@ -38,14 +38,11 @@ module Fastlane
 
         # Consume endpoint result
         case response[:status]
-          when 200
-            UI.user_error!("JIRA responded with #{response[:status]}:#{response[:body]}")
+          when 201
             UI.success('Successfully created JIRA issue')
 
           else
-            if response[:status] != 200
-              UI.user_error!("JIRA responded with #{response[:status]}:#{response[:body]}")
-            end
+            UI.user_error!("JIRA responded with #{response[:status]}:#{response[:body]}")
         end
 
         response

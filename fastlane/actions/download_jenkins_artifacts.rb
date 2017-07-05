@@ -13,7 +13,9 @@ module Fastlane
         response = build(
             params[:server_url],
             params[:job_name],
-            params[:job_number]
+            params[:job_number],
+            params[:username],
+            params[:password]
         )
 
         # Match artifacts and download
@@ -23,7 +25,9 @@ module Fastlane
             params[:job_number],
             params[:downloads_dir],
             params[:apk_regex],
-            get_artifacts_from_response(response)
+            get_artifacts_from_response(response),
+            params[:username],
+            params[:password]
         )
 
         files
@@ -35,26 +39,30 @@ module Fastlane
         return JSON.parse(response[:body])['artifacts']
       end
 
-      def self.download_artifacts(server_url, job_name, job_number, downloads_dir, apk_regex, artifacts)
+      def self.download_artifacts(server_url, job_name, job_number, downloads_dir, apk_regex, artifacts, username, password)
         files = []
 
         for artifact in artifacts do
           if artifact['fileName'].match(apk_regex)
-            files << download_artifact("http://#{server_url}/job/#{job_name}/#{job_number}", downloads_dir, artifact)
+            files << download_artifact("http://#{server_url}/job/#{job_name}/#{job_number}", downloads_dir, artifact, username, password)
           end
         end
 
         files
       end
 
-      def self.download_artifact(url, downloads_dir, artifact)
+      def self.download_artifact(url, downloads_dir, artifact, username, password)
         UI.important("Downloading #{artifact['fileName']}...")
 
         require 'open-uri'
 
         filename = "#{downloads_dir}/#{artifact['fileName']}"
         open(filename, 'wb') do |file|
-          file << open("#{url}/artifact/#{artifact['relativePath']}").read
+          if !username.nil? && !password.nil?
+            file << open("#{url}/artifact/#{artifact['relativePath']}", http_basic_authentication: [username, password]).read
+          else
+            file << open("#{url}/artifact/#{artifact['relativePath']}").read
+          end
         end
 
         filename
@@ -73,10 +81,14 @@ module Fastlane
         return response
       end
 
-      def self.build(server_url, job_name, job_number)
+      def self.build(server_url, job_name, job_number, username, password)
         # curl -X GET JENKINS_URL/job/JOB_NAME/JOB_NUMBER
 
-        call_endpoint("http://#{server_url}/job/#{job_name}/#{job_number}/api/json", 'get')
+        if !username.nil? && !password.nil?
+          call_endpoint("http://#{username}:#{password}@#{server_url}/job/#{job_name}/#{job_number}/api/json", 'get')
+        else
+          call_endpoint("http://#{server_url}/job/#{job_name}/#{job_number}/api/json", 'get')
+        end
       end
 
       #####################################################
@@ -124,6 +136,17 @@ module Fastlane
                                          env_name: "FL_DOWNLOAD_ARTIFACTS_DOWNLOADS_DIR",
                                          description: "Directory to save downloads to. e.g. downloads",
                                          default_value: "",
+                                         optional: true),
+            FastlaneCore::ConfigItem.new(key: :username,
+                                         env_name: 'FL_DOWNLOAD_ARTIFACTS_DOWNLOADS_USERNAME',
+                                         description: 'Username for Jenkins server',
+                                         default_value: nil,
+                                         optional: true),
+            FastlaneCore::ConfigItem.new(key: :password,
+                                         env_name: 'FL_DOWNLOAD_ARTIFACTS_DOWNLOADS_PASSWORD',
+                                         description: 'Password for Jenkins server',
+                                         default_value: nil,
+                                         sensitive: true,
                                          optional: true)
         ]
       end
