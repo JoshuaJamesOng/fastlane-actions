@@ -17,7 +17,7 @@ module Fastlane
         )
 
         # Match artifacts and download
-        download_artifacts(
+        files = download_artifacts(
             params[:server_url],
             params[:job_name],
             params[:job_number],
@@ -25,6 +25,8 @@ module Fastlane
             params[:apk_regex],
             get_artifacts_from_response(response)
         )
+
+        files
       end
 
       def self.get_artifacts_from_response(response)
@@ -34,11 +36,15 @@ module Fastlane
       end
 
       def self.download_artifacts(server_url, job_name, job_number, downloads_dir, apk_regex, artifacts)
+        files = []
+
         for artifact in artifacts do
           if artifact['fileName'].match(apk_regex)
-            download_artifact("http://#{server_url}/job/#{job_name}/#{job_number}", downloads_dir, artifact)
+            files << download_artifact("http://#{server_url}/job/#{job_name}/#{job_number}", downloads_dir, artifact)
           end
         end
+
+        files
       end
 
       def self.download_artifact(url, downloads_dir, artifact)
@@ -46,9 +52,12 @@ module Fastlane
 
         require 'open-uri'
 
-        open("#{downloads_dir}/#{artifact['fileName']}", "wb") do |file|
+        filename = "#{downloads_dir}/#{artifact['fileName']}"
+        open(filename, 'wb') do |file|
           file << open("#{url}/artifact/#{artifact['relativePath']}").read
         end
+
+        filename
       end
 
       def self.call_endpoint(url, method)
