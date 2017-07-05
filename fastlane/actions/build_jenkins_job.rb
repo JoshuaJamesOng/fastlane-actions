@@ -14,7 +14,8 @@ module Fastlane
             params[:job_name],
             params[:username],
             params[:password],
-            params[:parameters]
+            params[:parameters],
+            params[:form_data]
         )
 
         # Consume endpoint result
@@ -26,15 +27,26 @@ module Fastlane
         end
       end
 
-      def self.call_endpoint(url, method)
+      def self.call_endpoint(url, method, form_data)
         require 'excon'
 
         case method
           when 'post'
-            response = Excon.post(
-                url,
-                :headers => {'Content-Type' => 'application/x-www-form-urlencoded'}
-            )
+            if form_data.nil?
+              response = Excon.post(
+                  url,
+                  :headers => {'Content-Type' => 'application/x-www-form-urlencoded'}
+              )
+            else
+              command = "curl -X POST -sw '%{http_code}' #{url}"
+              form_data.each_pair do |key, value|
+                command.concat(" -F '#{key}=@#{value}'")
+              end
+
+              response = sh(command)
+              code = response[response.length - 3, 3]
+              response = {status: Integer(code), body: ''}
+            end
           else
             UI.user_error!("Unsupported method #{method}")
         end
@@ -42,16 +54,18 @@ module Fastlane
         return response
       end
 
-      def self.build(server_url, job_name, username, password, parameter)
+      def self.build(server_url, job_name, username, password, parameter, form_data)
         # curl -X POST JENKINS_URL/job/JOB_NAME/build --data token=TOKEN --data-urlencode json='{"parameter": [{"name":"id", "value":"123"}, {"name":"verbosity", "value":"high"}]}'
 
-        if parameter.nil?
+        if parameter.nil? && form_data.nil?
           url = "http://#{username}:#{password}@#{server_url}/job/#{job_name}/build"
-        else
+        elsif form_data.nil?
           url = "http://#{username}:#{password}@#{server_url}/job/#{job_name}/buildWithParameters?#{parameter}"
+        else
+          url = "http://#{username}:#{password}@#{server_url}/job/#{job_name}/buildWithParameters"
         end
 
-        call_endpoint(url, 'post')
+        call_endpoint(url, 'post', form_data)
       end
 
       #####################################################
@@ -93,6 +107,13 @@ module Fastlane
             FastlaneCore::ConfigItem.new(key: :parameters,
                                          env_name: "FL_BUILD_JENKINS_PARAMETERS",
                                          description: "D",
+                                         default_value: nil,
+                                         optional: true),
+            FastlaneCore::ConfigItem.new(key: :form_data,
+                                         env_name: "FL_BUILD_JENKINS_FORM_DATA",
+                                         description: 'Form data to submit with request',
+                                         default_value: nil,
+                                         is_string: false,
                                          optional: true)
         ]
       end
