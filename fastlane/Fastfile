@@ -53,3 +53,34 @@ lane :get_jenkins_id do |options|
     end
 
 end
+
+desc "Attaches files to a single JIRA existing JIRA ticket"
+lane :attach_files_to_jira_ticket do |options|
+
+  UI.important("Attaching #{options[:files].size} files to #{options[:jira_ticket]}")
+
+  jira_token = "#{options[:credentials][:username]}:#{options[:credentials][:password]}"
+
+  for file in options[:files] do
+    UI.important("Attaching file #{file}")
+
+    response = add_jira_attachment(
+        server_url: "#{options[:credentials][:url]}",
+        api_token: jira_token,
+        issue_key: "#{options[:jira_ticket]}",
+        file: file,
+        certificate: "#{options[:credentials][:certificate]}",
+        certificate_pass: "#{options[:credentials][:certificate_pass]}"
+    )
+
+    if response[:status] == 200
+      require 'json'
+      json = JSON.parse(response[:body])
+      json = json[0]
+      UI.important("Uploaded attachment #{json['self']}")
+    else
+      UI.user_error!("Request returned #{response[:status]}")
+    end
+  end
+end
+
