@@ -16,7 +16,9 @@ module Fastlane
           response = build(
               params[:server_url],
               params[:job_name],
-              params[:job_number]
+              params[:job_number],
+              params[:username],
+              params[:password]
           )
 
           # Consume endpoint result
@@ -92,10 +94,14 @@ module Fastlane
         response
       end
 
-      def self.build(server_url, job_name, job_number)
+      def self.build(server_url, job_name, job_number, username, password)
         # curl -X GET JENKINS_URL/job/JOB_NAME/JOB_NUMBER
 
-        call_endpoint("http://#{server_url}/job/#{job_name}/#{job_number}/api/json", 'get')
+        if !username.nil? && !password.nil?
+          call_endpoint("http://#{username}:#{password}@#{server_url}/job/#{job_name}/#{job_number}/api/json", 'get')
+        else
+          call_endpoint("http://#{server_url}/job/#{job_name}/#{job_number}/api/json", 'get')
+        end
       end
 
       #####################################################
@@ -136,6 +142,17 @@ module Fastlane
                                          env_name: 'FL_BUILD_JENKINS_JOB_JOB_NUMBER',
                                          description: 'The Jenkins job number. e.g. 1, 2, defaults to lastBuild',
                                          default_value: 'lastBuild',
+                                         optional: true),
+            FastlaneCore::ConfigItem.new(key: :username,
+                                         env_name: 'FL_BUILD_JENKINS_JOB_USERNAME',
+                                         description: 'Username for Jenkins server',
+                                         default_value: nil,
+                                         optional: true),
+            FastlaneCore::ConfigItem.new(key: :password,
+                                         env_name: 'FL_BUILD_JENKINS_JOB_PASSWORD',
+                                         description: 'Password for Jenkins server',
+                                         default_value: nil,
+                                         sensitive: true,
                                          optional: true)
         ]
       end
