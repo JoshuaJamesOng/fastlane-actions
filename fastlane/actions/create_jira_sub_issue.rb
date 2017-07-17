@@ -22,7 +22,10 @@ module Fastlane
                 'description' => "#{params[:issue_description]}",
                 'issuetype' => {
                     'id' => "#{params[:type_id]}"
-                }
+                },
+                'components' => [
+                    {'id' => "#{params[:component_id]}"}
+                ]
             }
         }
 
@@ -136,6 +139,13 @@ module Fastlane
                                          verify_block: proc do |value|
                                            UI.user_error!("No project id, pass using `project_id: 'INTEGER'`") unless (value and not value.empty?)
                                          end),
+            FastlaneCore::ConfigItem.new(key: :component_id,
+                                         env_name: 'FL_CREATE_JIRA_ISSUE_COMPONENT_ID',
+                                         description: 'Component id which can be retrieved from api',
+                                         optional: false,
+                                         verify_block: proc do |value|
+                                           UI.user_error!("No component id, pass using `component_id: 'INTEGER'`") unless (value and not value.empty?)
+                                         end),
             FastlaneCore::ConfigItem.new(key: :parent_id,
                                          env_name: 'FL_CREATE_JIRA_ISSUE_PARENT_ID',
                                          description: 'Parent id which can be retrieved from issue creation',
@@ -190,6 +200,7 @@ module Fastlane
               server_url: "https://jira.intranet.company",
               api_token: "username:password",
               project_id: "1000",
+              component_id: "1001",
               parent_id: "70707",
               type_id: "3",
               issue_title: "My Jira Issue",
